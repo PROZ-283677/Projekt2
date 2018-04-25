@@ -19,6 +19,8 @@ import javax.websocket.WebSocketContainer;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -91,6 +93,16 @@ public class WebSocketChatStageControler {
 		if(file == null) 
 			isAttachment = false;
 		else {
+			if((int)file.length() > 5000000)
+			{
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setTitle("Przekroczono rozmiar");
+				alert.setHeaderText("Plik ma za duży rozmiar !");
+
+				alert.showAndWait();
+				file = null;
+				return;
+			}
 			isAttachment = true;
 			messageTextField.insertText(0, "Attached [FILE]: "+ file.getName());
 		}
