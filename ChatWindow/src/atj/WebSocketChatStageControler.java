@@ -2,10 +2,13 @@ package atj;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
 import javax.websocket.ClientEndpoint;
 import javax.websocket.CloseReason;
 import javax.websocket.ContainerProvider;
@@ -19,8 +22,6 @@ import javax.websocket.WebSocketContainer;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -48,7 +49,8 @@ public class WebSocketChatStageControler {
 	private String content; //wiadomosc ktora przesylamy (ciag znakow)
 	private boolean isAttachment; // mowi czy chcemy wyslac plik
 	private File file; // jesli zalaczymy plik to mamy go tu
-
+	private static final int SIZE = 1024*1024; // rozmiar bufora 1MB
+	
 	@FXML
 	private void initialize() {
 		webSocketClient = new WebSocketClient();
@@ -93,16 +95,6 @@ public class WebSocketChatStageControler {
 		if(file == null) 
 			isAttachment = false;
 		else {
-			if((int)file.length() > 5000000)
-			{
-				Alert alert = new Alert(AlertType.ERROR);
-				alert.setTitle("Przekroczono rozmiar");
-				alert.setHeaderText("Plik ma za duży rozmiar !");
-
-				alert.showAndWait();
-				file = null;
-				return;
-			}
 			isAttachment = true;
 			messageTextField.insertText(0, "Attached [FILE]: "+ file.getName());
 		}
@@ -149,14 +141,29 @@ public class WebSocketChatStageControler {
 		
 		@OnMessage
 		public void onMessage(ByteBuffer buffer, Session session) {
-			System.out.println("File was received");
+			File tmpFile = new File(session.getId()); // dzieki temu, jesli odbiore kilka paczek pod rzad od tego samego hosta to nie utworze nowego pliku
 
-			try {
-				ManagerFile manager = new ManagerFile();
-				Platform.runLater(() -> manager.fileReceived(buffer));
+			if(buffer.capacity() > SIZE) {  // jesli przyszla ostatnia czesc pliku to wywolaj ze odebrano plik
+				System.out.println("File was received");
+				
+				try {
+					ManagerFile manager = new ManagerFile();
+					Platform.runLater(() -> manager.fileReceived(tmpFile));
 
-			} catch (Throwable ex) {
-				ex.printStackTrace();
+				} catch (Throwable ex) {
+					ex.printStackTrace();
+				}
+			}
+			else {
+				try {
+					FileOutputStream ostream = new FileOutputStream(tmpFile, true);
+					FileChannel channel = ostream.getChannel();
+					channel.write(buffer);
+					channel.close();
+					ostream.close();
+				} catch (IOException i) {
+					i.printStackTrace();
+				}
 			}
 		}
 
@@ -180,19 +187,43 @@ public class WebSocketChatStageControler {
 				}
 			}
 			else {
+				long fileLength = file.length();
+				
 				try {
-					ByteBuffer buffer = ByteBuffer.allocateDirect((int)file.length());
-					InputStream is = new FileInputStream(file);
+					ByteBuffer byteBuffer;
+					InputStream istream = new FileInputStream(file);
+					byte[] buffer = new byte[SIZE];
 					
-					int oneByte;
-					while ((oneByte = is.read()) != -1) {
-						buffer.put((byte)oneByte);
+					if(fileLength > SIZE){
+						byteBuffer = ByteBuffer.allocateDirect(SIZE);
+						
+						while (fileLength >= SIZE) {
+							istream.read(buffer);
+							byteBuffer.put(buffer);
+							byteBuffer.flip();
+							session.getBasicRemote().sendBinary(byteBuffer);
+							byteBuffer.clear();
+							
+							fileLength -= SIZE;
+						}
+						
 					}
-					is.close();
-					buffer.flip();
+					if(fileLength != 0) { // jesli plik jest mniejszy niz 1MB lub zostanie czesc <1MB po petli wyzej
+						buffer = new byte[(int)fileLength];
+						byteBuffer = ByteBuffer.allocateDirect((int)fileLength);
+						
+						istream.read(buffer);
+						byteBuffer.put(buffer);
+						byteBuffer.flip();
+						session.getBasicRemote().sendBinary(byteBuffer);
+						byteBuffer.clear();
+					}
+					istream.close();
 					
+					byteBuffer = ByteBuffer.allocateDirect(SIZE+1);
+					session.getBasicRemote().sendBinary(byteBuffer);
 					session.getBasicRemote().sendText("[FILE] sent by "+ user +": "+ file.getName());
-					session.getBasicRemote().sendBinary(buffer);
+					
 				} catch (IOException ex) {
 					ex.printStackTrace();
 				}

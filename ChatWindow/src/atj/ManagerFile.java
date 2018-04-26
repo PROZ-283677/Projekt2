@@ -1,10 +1,11 @@
 package atj;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.util.Optional;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -14,15 +15,15 @@ import javafx.stage.Stage;
 
 public class ManagerFile {
 	private String filePath;
-	private ByteBuffer buffer;
+	private File file;
 	
 	ManagerFile(){
-		buffer = null;
+		file = null;
 		filePath = null;
 	}
 	
-	public void fileReceived(ByteBuffer buff) {
-		buffer = buff;
+	public void fileReceived(File received) {
+		file = received;
 		try {
 			Alert alert = new Alert(AlertType.CONFIRMATION);
 			alert.setTitle("Otrzymano plik");
@@ -37,14 +38,24 @@ public class ManagerFile {
 		}
 
 		if (filePath != null) {
-			File file = new File(filePath);
+			File newFile = new File(filePath);
+			
 			try {
-				FileOutputStream ostream = new FileOutputStream(file, false);
-				FileChannel channel = ostream.getChannel();
+				FileChannel input = new FileInputStream(file).getChannel();
+				FileChannel output = new FileOutputStream(newFile).getChannel();
+				output.transferFrom(input, 0, input.size());
+				input.close();
+				output.close();
+				Files.delete(file.toPath());
+				file = null;
 
-				channel.write(buffer);
-				ostream.close();
-
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		else {
+			try {
+				Files.delete(file.toPath());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
