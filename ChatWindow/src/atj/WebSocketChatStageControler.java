@@ -77,10 +77,8 @@ public class WebSocketChatStageControler {
 		if (messageTextField.getText().isEmpty()) return; 
 		content = messageTextField.getText();
 		if(isAttachment == true) {
-			Thread thread = new Thread()
-			{
-			    public void run()
-			    {
+			Thread thread = new Thread(){
+			    public void run(){
 			    	webSocketClient.sendMessage(content);
 			    }
 			};
@@ -160,14 +158,11 @@ public class WebSocketChatStageControler {
 				try {
 					ManagerFile manager = new ManagerFile();
 					
-					Thread thread = new Thread()
-					{
-					    public void run()
-					    {
+					Thread thread = new Thread(){
+					    public void run(){
 					    	Platform.runLater(() -> manager.fileReceived(tmpFile));
 					    }
 					};
-					
 					thread.start();
 
 				} catch (Throwable ex) {
