@@ -76,7 +76,18 @@ public class WebSocketChatStageControler {
 	private void btnSend_Click() {
 		if (messageTextField.getText().isEmpty()) return; 
 		content = messageTextField.getText();
-		webSocketClient.sendMessage(content);
+		if(isAttachment == true) {
+			Thread thread = new Thread()
+			{
+			    public void run()
+			    {
+			    	webSocketClient.sendMessage(content);
+			    }
+			};
+			thread.start();
+		}
+		else webSocketClient.sendMessage(content);
+		
 		messageTextField.clear();
 	}
 	
@@ -148,7 +159,16 @@ public class WebSocketChatStageControler {
 				
 				try {
 					ManagerFile manager = new ManagerFile();
-					Platform.runLater(() -> manager.fileReceived(tmpFile));
+					
+					Thread thread = new Thread()
+					{
+					    public void run()
+					    {
+					    	Platform.runLater(() -> manager.fileReceived(tmpFile));
+					    }
+					};
+					
+					thread.start();
 
 				} catch (Throwable ex) {
 					ex.printStackTrace();
@@ -187,6 +207,7 @@ public class WebSocketChatStageControler {
 				}
 			}
 			else {
+				isAttachment = false;
 				long fileLength = file.length();
 				
 				try {
@@ -227,8 +248,7 @@ public class WebSocketChatStageControler {
 				} catch (IOException ex) {
 					ex.printStackTrace();
 				}
-
-				isAttachment = false;
+				
 				file = null;
 			}
 		}
