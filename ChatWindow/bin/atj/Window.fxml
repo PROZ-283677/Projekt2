@@ -17,5 +17,6 @@
       <Label layoutX="58.0" layoutY="176.0" text="Chat:" />
       <Label layoutX="45.0" layoutY="353.0" text="Message:" />
       <Button fx:id="selectFile" disable="true" layoutX="496.0" layoutY="300.0" mnemonicParsing="false" onAction="#btnSelectFile" onKeyPressed="#btnSelectFile" text="Select File" />
+      <TextArea fx:id="sendingFile" layoutX="482.0" layoutY="248.0" prefHeight="5.0" prefWidth="112.0" />
    </children>
 </AnchorPane>

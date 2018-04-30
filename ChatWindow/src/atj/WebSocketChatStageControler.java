@@ -43,6 +43,8 @@ public class WebSocketChatStageControler {
 	Button btnSend;
 	@FXML
 	Button selectFile;
+	@FXML
+	TextArea sendingFile;
 	
 	private String user;
 	private WebSocketClient webSocketClient;
@@ -203,6 +205,7 @@ public class WebSocketChatStageControler {
 			}
 			else {
 				isAttachment = false;
+				sendingFile.setText("Sending a file");
 				long fileLength = file.length();
 				
 				try {
@@ -244,6 +247,7 @@ public class WebSocketChatStageControler {
 					ex.printStackTrace();
 				}
 				
+				sendingFile.setText("");
 				file = null;
 			}
 		}
